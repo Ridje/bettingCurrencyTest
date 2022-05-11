@@ -1,4 +1,4 @@
-package com.kis.bettingcurrency.model.network.response
+package com.kis.bettingcurrency.data.network.response
 
 import kotlinx.serialization.Serializable
 
