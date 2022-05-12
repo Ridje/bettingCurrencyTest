@@ -3,16 +3,17 @@ package com.kis.bettingcurrency.data.repository
 import com.kis.bettingcurrency.data.database.BettingCurrencyDatabase
 import com.kis.bettingcurrency.data.network.CurrencyApi
 import kotlinx.coroutines.flow.flow
+import javax.inject.Inject
 
-class CurrencyRepositoryImpl constructor(
+class CurrencyRepositoryImpl @Inject constructor(
     private val currencyApi: CurrencyApi,
     private val favouriteDatabase: BettingCurrencyDatabase,
 ) : CurrencyRepository {
-    override suspend fun getFavouriteRates(baseCurrency: String) {
+    override suspend fun getFavouriteRates(baseCurrency: String?) {
         TODO("Not yet implemented")
     }
 
-    override suspend fun getRates(baseCurrency: String) {
+    override suspend fun getRates(baseCurrency: String?) {
         TODO("Not yet implemented")
     }
 

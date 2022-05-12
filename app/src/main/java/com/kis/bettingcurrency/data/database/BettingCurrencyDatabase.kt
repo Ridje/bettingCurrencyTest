@@ -11,4 +11,8 @@ import com.kis.bettingcurrency.data.database.entity.FavouriteCurrencyDao
 )
 abstract class BettingCurrencyDatabase : RoomDatabase() {
     abstract fun favouriteCurrencyDao(): FavouriteCurrencyDao
+
+    companion object {
+        const val DATABASE_NAME = "favourite"
+    }
 }
