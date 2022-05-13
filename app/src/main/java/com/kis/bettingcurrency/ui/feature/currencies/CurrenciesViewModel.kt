@@ -3,6 +3,9 @@ package com.kis.bettingcurrency.ui.feature.currencies
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kis.bettingcurrency.data.repository.CurrencyRepository
+import com.kis.bettingcurrency.model.Currency
+import com.kis.bettingcurrency.model.CurrencyRate
+import com.kis.bettingcurrency.ui.UIState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,15 +18,18 @@ class CurrenciesViewModel @Inject constructor(
     private val dataSource: CurrencyRepository,
 ) : ViewModel() {
 
-    private var baseCurrency = "EUR"
+    private var baseCurrency: Currency = Currency("EUR")
 
-    val _stateUI: MutableStateFlow<CurrenciesContract> = MutableStateFlow(
+    private val _stateUI: MutableStateFlow<CurrenciesContract> = MutableStateFlow(
         CurrenciesContract(
             symbolsUIState = UIState.Loading,
             ratesUIState = UIState.Loading,
         )
     )
-    val stateUI: StateFlow<CurrenciesContract> = _stateUI
+    val stateUI: StateFlow<CurrenciesContract>
+        get() {
+            return _stateUI
+        }
 
     init {
         loadCurrencies()
@@ -36,7 +42,10 @@ class CurrenciesViewModel @Inject constructor(
                 ratesUIState = UIState.Loading,
             )
             val currenciesResult = dataSource.getCurrencies()
-            baseCurrency = currenciesResult.first().ISO
+
+            baseCurrency = currenciesResult.find { currency -> currency == baseCurrency }
+                ?: baseCurrency
+
             _stateUI.value = stateUI.value.copy(
                 symbolsUIState = UIState.Success(
                     Symbols(
@@ -50,14 +59,64 @@ class CurrenciesViewModel @Inject constructor(
     }
 
     private fun loadRates() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
+            _stateUI.value = _stateUI.value.copy(
+                ratesUIState = UIState.Loading,
+            )
+            val result = dataSource.getRates(baseCurrency)
+
             _stateUI.value = stateUI.value.copy(
                 ratesUIState = UIState.Success(
                     Rates(
-                        dataSource.getRates(baseCurrency)
+                        result
                     )
                 )
             )
+        }
+    }
+
+    fun onSelectedCurrency(selectedCurrency: Currency) {
+        baseCurrency = selectedCurrency
+
+        (stateUI.value.symbolsUIState as? UIState.Success)?.let { symbolsUIState ->
+            _stateUI.value = _stateUI.value.copy(
+                symbolsUIState = symbolsUIState.copy(
+                    data = symbolsUIState.data.copy(
+                        selectedCurrency = selectedCurrency,
+                    )
+                )
+            )
+        }
+
+        loadRates()
+    }
+
+    fun onClickFavouriteIcon(currencyRate: CurrencyRate) {
+        viewModelScope.launch {
+            if (currencyRate.isFavourite) {
+                dataSource.removeFavourite(currencyRate.currency)
+            } else {
+                dataSource.addFavourite(currencyRate.currency)
+            }
+
+            (stateUI.value.ratesUIState as? UIState.Success)?.let { ratesUIState ->
+
+                val newList = with(ratesUIState.data.currencies.toMutableList()) {
+                    val index = this.indexOf(currencyRate)
+                    this[index] = currencyRate.copy(
+                        isFavourite = !currencyRate.isFavourite
+                    )
+                    return@with this
+                }
+
+                _stateUI.value = _stateUI.value.copy(
+                    ratesUIState = ratesUIState.copy(
+                        data = ratesUIState.data.copy(
+                            currencies = newList
+                        )
+                    )
+                )
+            }
         }
     }
 }

@@ -2,6 +2,7 @@ package com.kis.bettingcurrency.ui.feature.currencies
 
 import com.kis.bettingcurrency.model.Currency
 import com.kis.bettingcurrency.model.CurrencyRate
+import com.kis.bettingcurrency.ui.UIState
 
 data class CurrenciesContract(
     val symbolsUIState: UIState<Symbols>,
@@ -16,10 +17,3 @@ data class Symbols(
 data class Rates(
     val currencies: List<CurrencyRate>,
 )
-
-
-sealed class UIState<out T : Any> {
-    data class Success<out T: Any>(val data: T) : UIState<T>()
-    object Loading : UIState<Nothing>()
-    class Error(val message: String) : UIState<Nothing>()
-}

@@ -1,7 +1,11 @@
 package com.kis.bettingcurrency.ui.feature.currencies
 
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateSizeAsState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -19,8 +23,6 @@ import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.Icon
-import androidx.compose.material.LocalContentAlpha
-import androidx.compose.material.LocalContentColor
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
@@ -32,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -43,6 +46,7 @@ import androidx.compose.ui.unit.toSize
 import com.kis.bettingcurrency.R
 import com.kis.bettingcurrency.model.Currency
 import com.kis.bettingcurrency.model.CurrencyRate
+import com.kis.bettingcurrency.ui.UIState
 import java.math.BigDecimal
 
 @Composable
@@ -55,6 +59,8 @@ fun CurrenciesScreenRoute(
     CurrenciesScreen(
         symbolsUIState = screenState.symbolsUIState,
         ratesUIState = screenState.ratesUIState,
+        onClickFavouriteIcon = viewModel::onClickFavouriteIcon,
+        onSelectedCurrency = viewModel::onSelectedCurrency,
     )
 }
 
@@ -62,6 +68,8 @@ fun CurrenciesScreenRoute(
 fun CurrenciesScreen(
     symbolsUIState: UIState<Symbols>,
     ratesUIState: UIState<Rates>,
+    onClickFavouriteIcon: (CurrencyRate) -> Unit,
+    onSelectedCurrency: (Currency) -> Unit,
 ) {
     Scaffold {
         Column(
@@ -79,7 +87,7 @@ fun CurrenciesScreen(
                     BaseCurrencyDropdownList(
                         items = symbolsUIState.data.currencies,
                         selectedItem = symbolsUIState.data.selectedCurrency,
-                        onSelectedItem = {},
+                        onSelectedItem = onSelectedCurrency,
                         modifier = Modifier.weight(1f)
                     )
                     Spacer(modifier = Modifier.width(20.dp))
@@ -91,7 +99,10 @@ fun CurrenciesScreen(
                 }
             }
             if (ratesUIState is UIState.Success) {
-                CurrenciesList(currencies = ratesUIState.data.currencies)
+                CurrenciesList(
+                    currencies = ratesUIState.data.currencies,
+                    onClickFavouriteIcon = onClickFavouriteIcon,
+                )
             }
             if (ratesUIState is UIState.Loading || symbolsUIState is UIState.Loading) {
                 CircularProgressIndicator()
@@ -102,20 +113,26 @@ fun CurrenciesScreen(
 
 @Composable
 fun CurrenciesList(
-    currencies: List<CurrencyRate>
+    currencies: List<CurrencyRate>,
+    onClickFavouriteIcon: (CurrencyRate) -> Unit,
 ) {
     LazyColumn(
         contentPadding = PaddingValues(horizontal = 5.dp, vertical = 8.dp)
     ) {
         items(currencies) { item ->
-            RateItemRow(rateItem = item)
+            RateItemRow(
+                rateItem = item,
+                onClickFavouriteIcon = onClickFavouriteIcon,
+            )
         }
     }
 }
 
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun RateItemRow(
-    rateItem: CurrencyRate
+    rateItem: CurrencyRate,
+    onClickFavouriteIcon: (CurrencyRate) -> Unit,
 ) {
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -123,20 +140,27 @@ fun RateItemRow(
     ) {
         Text(text = rateItem.currency.ISO)
         Text(text = rateItem.rate.toPlainString())
+
+        val tint by animateColorAsState(
+            if (rateItem.isFavourite) Color.Red else Color.Gray
+        )
         Icon(
-            painter = if (rateItem.currency.isFavourite) {
+            painter = if (rateItem.isFavourite) {
                 painterResource(id = R.drawable.ic_heart_solid)
             } else {
                 painterResource(id = R.drawable.ic_heart_regular)
             },
             contentDescription = "Expand row icon",
-            modifier = Modifier.size(20.dp),
-            tint = if (rateItem.currency.isFavourite) {
-                Color.Red
-            } else {
-                LocalContentColor.current.copy(alpha = LocalContentAlpha.current)
-            }
+            modifier = Modifier
+                .size(20.dp)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { onClickFavouriteIcon.invoke(rateItem) }
+                .clipToBounds(),
+            tint = tint,
         )
+
     }
 }
 
@@ -210,7 +234,11 @@ fun CurrenciesScreenPreview() {
                 )
             }
         ),
-        ratesUIState = UIState.Loading
+        ratesUIState = UIState.Success(
+            data = Rates(listOfCurrencyRate(30))
+        ),
+        {},
+        {},
     )
 }
 
@@ -219,7 +247,7 @@ private fun listOfCurrencyRate(count: Int): List<CurrencyRate> {
 
     for (i in 1..count) {
         list.add(
-            CurrencyRate(Currency("VAL$i", i % 2 == 0), BigDecimal(i))
+            CurrencyRate(Currency("VAL$i"), BigDecimal(i), i % 2 == 0)
         )
     }
     list.sortBy { it.rate }
@@ -231,7 +259,7 @@ private fun listOfSymbols(count: Int): List<Currency> {
 
     for (i in 1..count) {
         list.add(
-            Currency("VAL$i", i % 2 == 0),
+            Currency("VAL$i"),
         )
     }
     return list
