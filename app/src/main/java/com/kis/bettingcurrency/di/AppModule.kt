@@ -5,7 +5,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 
 @Module(
-    includes = [DatabaseModule::class, NetworkModule::class]
+    includes = [DatabaseModule::class, NetworkModule::class, UtilityModule::class]
 )
 @InstallIn(SingletonComponent::class)
 object AppModule {

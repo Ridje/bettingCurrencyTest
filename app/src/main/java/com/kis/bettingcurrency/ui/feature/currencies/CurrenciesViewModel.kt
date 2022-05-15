@@ -2,20 +2,25 @@ package com.kis.bettingcurrency.ui.feature.currencies
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kis.bettingcurrency.R
+import com.kis.bettingcurrency.core.ResourceProvider
 import com.kis.bettingcurrency.data.repository.CurrencyRepository
 import com.kis.bettingcurrency.model.Currency
 import com.kis.bettingcurrency.model.CurrencyRate
 import com.kis.bettingcurrency.ui.UIState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import javax.inject.Inject
 
 @HiltViewModel
 class CurrenciesViewModel @Inject constructor(
     private val dataSource: CurrencyRepository,
+    private val resourceProvider: ResourceProvider,
 ) : ViewModel() {
 
     private var baseCurrency: Currency = Currency("EUR")
@@ -31,12 +36,45 @@ class CurrenciesViewModel @Inject constructor(
             return _stateUI
         }
 
+    private val ratesExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        _stateUI.value = _stateUI.value.copy(
+            ratesUIState = UIState.Error(
+                when (throwable) {
+                    is HttpException -> {
+                        resourceProvider.getString(R.string.rates_list_not_available, throwable.code())
+                    }
+                    else -> {
+                        resourceProvider.getString(R.string.unknown_error)
+                    }
+                }
+            ),
+        )
+    }
+
+    private val currenciesExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        _stateUI.value = _stateUI.value.copy(
+            symbolsUIState = UIState.Error(
+                when (throwable) {
+                    is HttpException -> {
+                        resourceProvider.getString(R.string.currencies_list_not_available, throwable.code())
+                    }
+                    else -> {
+                        resourceProvider.getString(R.string.unknown_error)
+                    }
+                }
+            ),
+            ratesUIState = UIState.Error(),
+        )
+    }
+
+    private var ratesJob: Job? = null
+
     init {
         loadCurrencies()
     }
 
     private fun loadCurrencies() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(currenciesExceptionHandler) {
             _stateUI.value = stateUI.value.copy(
                 symbolsUIState = UIState.Loading,
                 ratesUIState = UIState.Loading,
@@ -48,9 +86,9 @@ class CurrenciesViewModel @Inject constructor(
 
             _stateUI.value = stateUI.value.copy(
                 symbolsUIState = UIState.Success(
-                    Symbols(
+                    CurrenciesContract.Symbols(
                         currencies = currenciesResult,
-                        selectedCurrency = currenciesResult.first(),
+                        selectedCurrency = baseCurrency,
                     )
                 ),
             )
@@ -59,7 +97,11 @@ class CurrenciesViewModel @Inject constructor(
     }
 
     private fun loadRates() {
-        viewModelScope.launch {
+        if (ratesJob?.isActive == true) {
+            ratesJob?.cancel()
+        }
+
+        ratesJob = viewModelScope.launch(ratesExceptionHandler) {
             _stateUI.value = _stateUI.value.copy(
                 ratesUIState = UIState.Loading,
             )
@@ -67,7 +109,7 @@ class CurrenciesViewModel @Inject constructor(
 
             _stateUI.value = stateUI.value.copy(
                 ratesUIState = UIState.Success(
-                    Rates(
+                    CurrenciesContract.Rates(
                         result
                     )
                 )
@@ -118,5 +160,13 @@ class CurrenciesViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun onReloadCurrenciesClicked() {
+        loadCurrencies()
+    }
+
+    fun onReloadRatesClicked() {
+        loadRates()
     }
 }

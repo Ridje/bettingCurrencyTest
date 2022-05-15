@@ -8,19 +8,18 @@ import retrofit2.http.Query
 interface CurrencyApi {
 
     companion object {
-        const val API_BASE_URL = "https://api.exchangeratesapi.io/v1/"
+        const val API_BASE_URL = "https://api.apilayer.com/exchangerates_data/"
     }
 
     @GET("symbols")
-    fun getSymbols(): CurrencySymbolsResponse
+    suspend fun getSymbols(): CurrencySymbolsResponse
 
     @GET("latest")
-    fun getLatest(
+    suspend fun getLatest(
         @Query("symbols")
         symbols: List<String>?,
 
         @Query("base")
         base: String?,
     ): CurrencyRateResponse
-
 }

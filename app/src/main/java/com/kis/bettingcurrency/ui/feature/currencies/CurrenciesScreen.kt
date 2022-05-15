@@ -1,8 +1,6 @@
 package com.kis.bettingcurrency.ui.feature.currencies
 
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateSizeAsState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -14,16 +12,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.Button
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.Icon
 import androidx.compose.material.Scaffold
+import androidx.compose.material.Snackbar
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -40,6 +40,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
@@ -61,15 +63,19 @@ fun CurrenciesScreenRoute(
         ratesUIState = screenState.ratesUIState,
         onClickFavouriteIcon = viewModel::onClickFavouriteIcon,
         onSelectedCurrency = viewModel::onSelectedCurrency,
+        onReloadCurrenciesClicked = viewModel::onReloadCurrenciesClicked,
+        onReloadRatesClicked = viewModel::onReloadRatesClicked,
     )
 }
 
 @Composable
 fun CurrenciesScreen(
-    symbolsUIState: UIState<Symbols>,
-    ratesUIState: UIState<Rates>,
+    symbolsUIState: UIState<CurrenciesContract.Symbols>,
+    ratesUIState: UIState<CurrenciesContract.Rates>,
     onClickFavouriteIcon: (CurrencyRate) -> Unit,
     onSelectedCurrency: (Currency) -> Unit,
+    onReloadCurrenciesClicked: () -> Unit,
+    onReloadRatesClicked: () -> Unit,
 ) {
     Scaffold {
         Column(
@@ -107,7 +113,35 @@ fun CurrenciesScreen(
             if (ratesUIState is UIState.Loading || symbolsUIState is UIState.Loading) {
                 CircularProgressIndicator()
             }
+
+            if (symbolsUIState is UIState.Error) {
+                CurrenciesSnackBar(
+                    symbolsUIState.message,
+                    onReloadCurrenciesClicked,
+                )
+            } else if (ratesUIState is UIState.Error) {
+                CurrenciesSnackBar(
+                    ratesUIState.message,
+                    onReloadRatesClicked,
+                )
+            }
         }
+    }
+}
+
+@Composable
+fun CurrenciesSnackBar(
+    text: String?,
+    onReloadClick: () -> Unit,
+) {
+    Snackbar(
+        action = {
+            Button(onClick = onReloadClick) {
+                Text("Reload")
+            }
+        },
+    ) {
+        Text(text = text ?: stringResource(R.string.unknown_error))
     }
 }
 
@@ -128,7 +162,6 @@ fun CurrenciesList(
     }
 }
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun RateItemRow(
     rateItem: CurrencyRate,
@@ -199,13 +232,13 @@ fun BaseCurrencyDropdownList(
             expanded = expanded,
             onDismissRequest = { expanded = false },
             modifier = Modifier
-                .wrapContentHeight()
                 .clickable { expanded = !expanded }
                 .width(with(LocalDensity.current) { rowSize.width.toDp() })
                 .border(
                     width = 1.dp,
                     color = Color.Black,
                 )
+                .requiredHeightIn(max = 200.dp),
         ) {
             items.forEach { item ->
                 DropdownMenuItem(
@@ -214,7 +247,14 @@ fun BaseCurrencyDropdownList(
                         onSelectedItem(item)
                     },
                 ) {
-                    Text(text = item.ISO)
+                    Text(
+                        text = item.ISO,
+                        fontWeight = if (item == selectedItem) {
+                            FontWeight.Bold
+                        } else {
+                            null
+                        },
+                    )
                 }
             }
         }
@@ -228,15 +268,15 @@ fun CurrenciesScreenPreview() {
     CurrenciesScreen(
         symbolsUIState = UIState.Success(
             with(listOfSymbols(3)) {
-                return@with Symbols(
+                return@with CurrenciesContract.Symbols(
                     this,
                     this.first(),
                 )
             }
         ),
-        ratesUIState = UIState.Success(
-            data = Rates(listOfCurrencyRate(30))
-        ),
+        ratesUIState = UIState.Error(),
+        {},
+        {},
         {},
         {},
     )
