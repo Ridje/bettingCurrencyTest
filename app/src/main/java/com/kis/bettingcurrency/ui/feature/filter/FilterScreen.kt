@@ -28,23 +28,34 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.kis.bettingcurrency.R
 import com.kis.bettingcurrency.core.SortRateStrategy
+import com.kis.bettingcurrency.core.viewModel
+import com.kis.bettingcurrency.ui.feature.currencies.CurrenciesViewModel
 
 @Composable
 fun FilterScreenRoute(
     navController: NavController,
-    viewModel: FilterViewModel = hiltViewModel()
+    viewModel: FilterViewModel = hiltViewModel(),
 ) {
+    val parenViewModel: CurrenciesViewModel? = navController.previousBackStackEntry.viewModel()
+
     val stateUi = viewModel.stateUI.collectAsState()
     FilterScreen(
         stateUi.value,
         viewModel::onSelectedStrategy,
+        {
+            parenViewModel?.sortRateStrategy = stateUi.value.selectedStrategy
+            navController.popBackStack()
+        },
+        navController::popBackStack,
     )
 }
 
 @Composable
 fun FilterScreen(
     filterContract: FilterContract,
-    onSelectedStrategy: (SortRateStrategy) -> Unit
+    onSelectedStrategy: (SortRateStrategy) -> Unit,
+    onApply: () -> Unit,
+    onCancel: () -> Unit,
 ) {
 
     Scaffold { innerPadding ->
@@ -52,6 +63,8 @@ fun FilterScreen(
             strategies = filterContract.strategies,
             selectedStrategy = filterContract.selectedStrategy,
             onSelectedStrategy = onSelectedStrategy,
+            onApply = onApply,
+            onCancel = onCancel,
             innerPadding = innerPadding,
         )
     }
@@ -62,6 +75,8 @@ fun RadioButtonList(
     strategies: List<SortRateStrategy>,
     selectedStrategy: SortRateStrategy,
     onSelectedStrategy: (SortRateStrategy) -> Unit,
+    onApply: () -> Unit,
+    onCancel: () -> Unit,
     innerPadding: PaddingValues,
 ) {
     Column(
@@ -101,11 +116,11 @@ fun RadioButtonList(
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            OutlinedButton(onClick = {}) {
-                Text(text = "Cancel")
+            OutlinedButton(onClick = onCancel) {
+                Text(text = stringResource(id = R.string.cancel))
             }
-            Button(onClick = {}) {
-                Text(text = "Apply")
+            Button(onClick = onApply) {
+                Text(text = stringResource(id = R.string.apply))
             }
         }
     }
@@ -116,6 +131,8 @@ fun RadioButtonList(
 fun FilterScreenPreview() {
     FilterScreen(
         FilterContract(),
+        {},
+        {},
         {},
     )
 }

@@ -5,12 +5,9 @@ import androidx.room.Room
 import com.kis.bettingcurrency.data.database.BettingCurrencyDatabase
 import com.kis.bettingcurrency.data.database.BettingCurrencyDatabase.Companion.DATABASE_NAME
 import com.kis.bettingcurrency.data.database.entity.FavouriteCurrencyDao
-import dagger.Component
 import dagger.Module
 import dagger.Provides
-import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
-import dagger.hilt.components.SingletonComponent
 import dagger.hilt.migration.DisableInstallInCheck
 import javax.inject.Singleton
 

@@ -26,12 +26,12 @@ class CurrenciesViewModel @Inject constructor(
     private val sortStrategyFactory: SortStrategyFactory,
 ) : ViewModel() {
 
-    private var baseCurrency: Currency = Currency("EUR")
-    private var sortRateStrategy: SortRateStrategy = SortRateStrategy.ISO_DESC
+    private var baseCurrency: Currency = Currency(resourceProvider.getString(R.string.default_currency))
+
+    var sortRateStrategy: SortRateStrategy = SortRateStrategy.ISO_DESC
         set(value) {
             if (field == value)
                 return
-
             field = value
             (_stateUI.value.ratesUIState as? UIState.Success)?.let { ratesState ->
                 _stateUI.value = _stateUI.value.copy(
@@ -46,19 +46,20 @@ class CurrenciesViewModel @Inject constructor(
             }
         }
 
-    private val _stateUI: MutableStateFlow<CurrenciesContract> = MutableStateFlow(
-        CurrenciesContract(
-            symbolsUIState = UIState.Loading,
-            ratesUIState = UIState.Loading,
-            onlyFavourite = false,
-            sortRateStrategy = sortRateStrategy,
+    private val _stateUI: MutableStateFlow<CurrenciesContract> =
+        MutableStateFlow(
+            CurrenciesContract(
+                symbolsUIState = UIState.Loading,
+                ratesUIState = UIState.Loading,
+                onlyFavourite = false,
+                sortRateStrategy = sortRateStrategy,
+            )
         )
-    )
+
     val stateUI: StateFlow<CurrenciesContract>
         get() {
             return _stateUI
         }
-
 
     private val ratesExceptionHandler = CoroutineExceptionHandler { _, throwable ->
         _stateUI.value = _stateUI.value.copy(

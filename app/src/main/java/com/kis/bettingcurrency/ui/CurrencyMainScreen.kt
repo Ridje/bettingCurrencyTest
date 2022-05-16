@@ -29,8 +29,8 @@ fun CurrencyNavHost(navController: NavHostController) {
         composable(route = CURRENCIES_LIST) {
             CurrenciesScreenRoute(navController)
         }
-        composable(route = "$CURRENCIES_FILTER/$SORT_STRATEGY={$SORT_STRATEGY}") { backstackEntry ->
-            FilterScreenRoute(navController = navController,)
+        composable(route = "$CURRENCIES_FILTER/$SORT_STRATEGY={$SORT_STRATEGY}") {
+            FilterScreenRoute(navController = navController)
         }
     }
 }

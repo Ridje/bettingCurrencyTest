@@ -4,4 +4,7 @@
     <string name="rates_list_not_available">Не удалось получить список курсов валют, код ошибки: %1$d</string>
     <string name="unknown_error">Неизвестная ошибка, обратитесь к разработчику</string>
     <string name="sort">Сортировка</string>
+    <string name="default_currency">EUR</string>
+    <string name="cancel">Отмена</string>
+    <string name="apply">Применить</string>
 </resources>

@@ -44,8 +44,8 @@ class SortStrategyFactory @Inject constructor() {
     }
 }
 
-enum class SortRateStrategy {
-    ISO_DESC,
+enum class SortRateStrategy() {
+    ISO_DESC(),
     ISO_ASC,
     RATE_DESC,
     RATE_ASC,
