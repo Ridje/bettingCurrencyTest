@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Button
@@ -32,6 +33,7 @@ import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,12 +53,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.kis.bettingcurrency.R
 import com.kis.bettingcurrency.model.Currency
 import com.kis.bettingcurrency.model.CurrencyRate
 import com.kis.bettingcurrency.ui.NavigationKeys.Params.SORT_STRATEGY
 import com.kis.bettingcurrency.ui.NavigationKeys.Route.CURRENCIES_FILTER
 import com.kis.bettingcurrency.ui.UIState
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.receiveAsFlow
 import java.math.BigDecimal
 
 @Composable
@@ -64,7 +72,9 @@ fun CurrenciesScreenRoute(
     navController: NavController,
     viewModel: CurrenciesViewModel = hiltViewModel(),
 ) {
-    val screenState: CurrenciesContract by viewModel.stateUI.collectAsState()
+    val screenState: CurrenciesContract.CurrenciesState by viewModel.stateUI.collectAsState()
+
+    val effectFlow = viewModel.effects.receiveAsFlow()
 
     CurrenciesScreen(
         symbolsUIState = screenState.symbolsUIState,
@@ -75,14 +85,16 @@ fun CurrenciesScreenRoute(
         onReloadCurrenciesClicked = viewModel::onReloadCurrenciesClicked,
         onReloadRatesClicked = viewModel::onReloadRatesClicked,
         onBottomBarClick = viewModel::onBottomBarClick,
-        onFiltersClick = { navController.navigate("$CURRENCIES_FILTER/$SORT_STRATEGY=${screenState.sortRateStrategy}") }
+        onFiltersClick = { navController.navigate("$CURRENCIES_FILTER/$SORT_STRATEGY=${screenState.sortRateStrategy}") },
+        onSwipeRefresh = viewModel::onSwipeRefresh,
+        effectFlow = effectFlow,
     )
 }
 
 @Composable
 fun CurrenciesScreen(
-    symbolsUIState: UIState<CurrenciesContract.Symbols>,
-    ratesUIState: UIState<CurrenciesContract.Rates>,
+    symbolsUIState: UIState<CurrenciesContract.CurrenciesState.Symbols>,
+    ratesUIState: UIState<CurrenciesContract.CurrenciesState.Rates>,
     onlyFavourite: Boolean,
     onClickFavouriteIcon: (CurrencyRate) -> Unit,
     onSelectedCurrency: (Currency) -> Unit,
@@ -90,6 +102,8 @@ fun CurrenciesScreen(
     onReloadRatesClicked: () -> Unit,
     onBottomBarClick: (Boolean) -> Unit,
     onFiltersClick: () -> Unit,
+    onSwipeRefresh: () -> Unit,
+    effectFlow: Flow<CurrenciesContract.Effect>? = null,
 ) {
     Scaffold(
         bottomBar = {
@@ -140,6 +154,8 @@ fun CurrenciesScreen(
                     currencies = ratesUIState.data.currencies,
                     onlyFavourite = onlyFavourite,
                     onClickFavouriteIcon = onClickFavouriteIcon,
+                    onSwipeRefresh = onSwipeRefresh,
+                    effectFlow = effectFlow,
                 )
             }
             if (ratesUIState is UIState.Loading || symbolsUIState is UIState.Loading) {
@@ -169,7 +185,7 @@ fun CurrenciesSnackBar(
     Snackbar(
         action = {
             Button(onClick = onReloadClick) {
-                Text("Reload")
+                Text(stringResource(id = R.string.reload))
             }
         },
     ) {
@@ -183,18 +199,34 @@ fun CurrenciesList(
     currencies: List<CurrencyRate>,
     onlyFavourite: Boolean,
     onClickFavouriteIcon: (CurrencyRate) -> Unit,
+    onSwipeRefresh: () -> Unit,
+    effectFlow: Flow<CurrenciesContract.Effect>? = null,
 ) {
-    LazyColumn(
-        contentPadding = PaddingValues(horizontal = 5.dp, vertical = 8.dp),
+    SwipeRefresh(
+        state = rememberSwipeRefreshState(false),
+        onRefresh = onSwipeRefresh,
     ) {
-        items(currencies, key = { rate -> rate.currency.ISO }) { item ->
-            if (!onlyFavourite || item.isFavourite) {
-                RateItemRow(
-                    rateItem = item,
-                    onClickFavouriteIcon = onClickFavouriteIcon,
-                    modifier = Modifier.animateItemPlacement()
-                )
+        val listState = rememberLazyListState()
+        LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(horizontal = 5.dp, vertical = 8.dp),
+        ) {
+            items(currencies, key = { rate -> rate.currency.ISO }) { item ->
+                if (!onlyFavourite || item.isFavourite) {
+                    RateItemRow(
+                        rateItem = item,
+                        onClickFavouriteIcon = onClickFavouriteIcon,
+                        modifier = Modifier.animateItemPlacement(),
+                    )
+                }
             }
+        }
+        LaunchedEffect(effectFlow) {
+            effectFlow?.onEach { effect ->
+                if (effect is CurrenciesContract.Effect.RatesSortChanged) {
+                    listState.scrollToItem(0)
+                }
+            }?.collect()
         }
     }
 }
@@ -305,7 +337,7 @@ fun CurrenciesScreenPreview() {
     CurrenciesScreen(
         symbolsUIState = UIState.Success(
             with(listOfSymbols(3)) {
-                return@with CurrenciesContract.Symbols(
+                return@with CurrenciesContract.CurrenciesState.Symbols(
                     this,
                     this.first(),
                 )
@@ -318,7 +350,8 @@ fun CurrenciesScreenPreview() {
         {},
         {},
         {},
-        { "sadsad" },
+        {},
+        {},
     )
 }
 

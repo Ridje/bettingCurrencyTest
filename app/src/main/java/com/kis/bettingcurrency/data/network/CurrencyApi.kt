@@ -16,9 +16,6 @@ interface CurrencyApi {
 
     @GET("latest")
     suspend fun getLatest(
-        @Query("symbols")
-        symbols: List<String>?,
-
         @Query("base")
         base: String?,
     ): CurrencyRateResponse

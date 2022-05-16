@@ -1,33 +1,34 @@
 package com.kis.bettingcurrency.core
 
 import com.kis.bettingcurrency.model.CurrencyRate
+import java.math.BigDecimal
 import javax.inject.Inject
 
 interface SortRatesStrategy {
     fun sort(list: List<CurrencyRate>): List<CurrencyRate>
 }
 
-class ISODescSortStrategy() : SortRatesStrategy {
+class ISODescSortStrategy : SortRatesStrategy {
 
     override fun sort(list: List<CurrencyRate>): List<CurrencyRate> {
         return list.sortedByDescending { it.currency.ISO }
     }
 }
 
-class ISOAscSortStrategy() : SortRatesStrategy {
+class ISOAscSortStrategy : SortRatesStrategy {
     override fun sort(list: List<CurrencyRate>): List<CurrencyRate> {
         return list.sortedBy { it.currency.ISO }
     }
 }
 
-class RateDescSortStrategy() : SortRatesStrategy {
+class RateDescSortStrategy : SortRatesStrategy {
     override fun sort(list: List<CurrencyRate>): List<CurrencyRate> {
         return list.sortedByDescending { it.rate }
     }
 
 }
 
-class RateAscSortStrategy() : SortRatesStrategy {
+class RateAscSortStrategy : SortRatesStrategy {
     override fun sort(list: List<CurrencyRate>): List<CurrencyRate> {
         return list.sortedBy { it.rate }
     }

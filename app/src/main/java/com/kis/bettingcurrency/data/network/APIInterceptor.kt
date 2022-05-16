@@ -19,8 +19,8 @@ private class APIInterceptor : Interceptor {
 }
 
 fun OkHttpClient.Builder.addProjectInterceptors(): OkHttpClient.Builder {
+    addInterceptor(APIInterceptor())
     if (BuildConfig.DEBUG) {
-        addInterceptor(APIInterceptor())
         val loggingInterceptor =
             HttpLoggingInterceptor().apply { setLevel(HttpLoggingInterceptor.Level.BODY) }
         addInterceptor(loggingInterceptor)

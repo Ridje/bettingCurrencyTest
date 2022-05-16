@@ -7,4 +7,5 @@
     <string name="default_currency">EUR</string>
     <string name="cancel">Отмена</string>
     <string name="apply">Применить</string>
+    <string name="reload">Reload</string>
 </resources>

@@ -13,6 +13,7 @@ import com.kis.bettingcurrency.ui.UIState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -26,7 +27,8 @@ class CurrenciesViewModel @Inject constructor(
     private val sortStrategyFactory: SortStrategyFactory,
 ) : ViewModel() {
 
-    private var baseCurrency: Currency = Currency(resourceProvider.getString(R.string.default_currency))
+    private var baseCurrency: Currency =
+        Currency(resourceProvider.getString(R.string.default_currency))
 
     var sortRateStrategy: SortRateStrategy = SortRateStrategy.ISO_DESC
         set(value) {
@@ -44,11 +46,12 @@ class CurrenciesViewModel @Inject constructor(
                     )
                 )
             }
+            viewModelScope.launch { effects.send(CurrenciesContract.Effect.RatesSortChanged) }
         }
 
-    private val _stateUI: MutableStateFlow<CurrenciesContract> =
+    private val _stateUI: MutableStateFlow<CurrenciesContract.CurrenciesState> =
         MutableStateFlow(
-            CurrenciesContract(
+            CurrenciesContract.CurrenciesState(
                 symbolsUIState = UIState.Loading,
                 ratesUIState = UIState.Loading,
                 onlyFavourite = false,
@@ -56,7 +59,7 @@ class CurrenciesViewModel @Inject constructor(
             )
         )
 
-    val stateUI: StateFlow<CurrenciesContract>
+    val stateUI: StateFlow<CurrenciesContract.CurrenciesState>
         get() {
             return _stateUI
         }
@@ -98,6 +101,9 @@ class CurrenciesViewModel @Inject constructor(
         )
     }
 
+    var effects = Channel<CurrenciesContract.Effect>(Channel.UNLIMITED)
+        private set
+
     private var ratesJob: Job? = null
 
     init {
@@ -117,7 +123,7 @@ class CurrenciesViewModel @Inject constructor(
 
             _stateUI.value = _stateUI.value.copy(
                 symbolsUIState = UIState.Success(
-                    CurrenciesContract.Symbols(
+                    CurrenciesContract.CurrenciesState.Symbols(
                         currencies = currenciesResult,
                         selectedCurrency = baseCurrency,
                     )
@@ -140,7 +146,7 @@ class CurrenciesViewModel @Inject constructor(
 
             _stateUI.value = stateUI.value.copy(
                 ratesUIState = UIState.Success(
-                    CurrenciesContract.Rates(
+                    CurrenciesContract.CurrenciesState.Rates(
                         sortStrategyFactory.getStrategy(sortRateStrategy).sort(result),
                     )
                 )
@@ -205,5 +211,9 @@ class CurrenciesViewModel @Inject constructor(
         _stateUI.value = _stateUI.value.copy(
             onlyFavourite = onlyFavourite
         )
+    }
+
+    fun onSwipeRefresh() {
+        loadRates()
     }
 }
