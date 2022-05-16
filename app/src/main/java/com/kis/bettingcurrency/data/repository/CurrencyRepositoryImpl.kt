@@ -1,5 +1,6 @@
 package com.kis.bettingcurrency.data.repository
 
+import com.kis.bettingcurrency.core.SortRatesStrategy
 import com.kis.bettingcurrency.data.database.entity.FavouriteCurrency
 import com.kis.bettingcurrency.data.database.entity.FavouriteCurrencyDao
 import com.kis.bettingcurrency.data.network.CurrencyApi
@@ -16,6 +17,7 @@ class CurrencyRepositoryImpl @Inject constructor(
     private val favouriteDao: FavouriteCurrencyDao,
     private val currenciesMapper: CurrenciesMapper,
 ) : CurrencyRepository {
+
     override suspend fun getFavouriteRates(baseCurrency: Currency) =
         withContext(Dispatchers.IO) {
             val favouriteCurrencies = favouriteDao.getAll()
@@ -37,7 +39,7 @@ class CurrencyRepositoryImpl @Inject constructor(
 //                return@async favouriteDao.getAll()
 //            }
 //            return@withContext currenciesMapper.mapRates(ratesJob.await(), favouriteJob.await())
-            return@withContext listOfCurrencyRate(30)
+            return@withContext listOfCurrencyRate(300)
         }
 
     override suspend fun getCurrencies() = withContext(Dispatchers.IO) {

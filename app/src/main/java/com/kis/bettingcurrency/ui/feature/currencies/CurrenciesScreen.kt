@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeightIn
 import androidx.compose.foundation.layout.size
@@ -29,6 +31,7 @@ import androidx.compose.material.Scaffold
 import androidx.compose.material.Snackbar
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -37,7 +40,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -53,6 +55,8 @@ import androidx.navigation.NavController
 import com.kis.bettingcurrency.R
 import com.kis.bettingcurrency.model.Currency
 import com.kis.bettingcurrency.model.CurrencyRate
+import com.kis.bettingcurrency.ui.NavigationKeys.Params.SORT_STRATEGY
+import com.kis.bettingcurrency.ui.NavigationKeys.Route.CURRENCIES_FILTER
 import com.kis.bettingcurrency.ui.UIState
 import java.math.BigDecimal
 
@@ -72,6 +76,7 @@ fun CurrenciesScreenRoute(
         onReloadCurrenciesClicked = viewModel::onReloadCurrenciesClicked,
         onReloadRatesClicked = viewModel::onReloadRatesClicked,
         onBottomBarClick = viewModel::onBottomBarClick,
+        onFiltersClick = { navController.navigate("$CURRENCIES_FILTER/$SORT_STRATEGY=${screenState.sortRateStrategy}") }
     )
 }
 
@@ -85,6 +90,7 @@ fun CurrenciesScreen(
     onReloadCurrenciesClicked: () -> Unit,
     onReloadRatesClicked: () -> Unit,
     onBottomBarClick: (Boolean) -> Unit,
+    onFiltersClick: () -> Unit,
 ) {
     Scaffold(
         bottomBar = {
@@ -93,11 +99,15 @@ fun CurrenciesScreen(
                 onClick = onBottomBarClick,
             )
         }
-    ) {
-
+    ) { innerPadding ->
         Column(
             modifier = Modifier
-                .padding(20.dp)
+                .padding(
+                    20.dp,
+                    20.dp,
+                    20.dp,
+                    innerPadding.calculateBottomPadding() + 5.dp
+                )
                 .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -117,14 +127,19 @@ fun CurrenciesScreen(
                     Icon(
                         painter = painterResource(id = R.drawable.ic_filter_solid),
                         contentDescription = "sort and filters",
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = rememberRipple(bounded = false, radius = 20.dp)
+                            ) { onFiltersClick.invoke() }
                     )
                 }
             }
             if (ratesUIState is UIState.Success) {
                 CurrenciesList(
                     currencies = ratesUIState.data.currencies,
-                    onlyFavourite = ratesUIState.data.onlyFavourite,
+                    onlyFavourite = onlyFavourite,
                     onClickFavouriteIcon = onClickFavouriteIcon,
                 )
             }
@@ -213,8 +228,7 @@ fun RateItemRow(
                 .clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() }
-                ) { onClickFavouriteIcon.invoke(rateItem) }
-                .clipToBounds(),
+                ) { onClickFavouriteIcon.invoke(rateItem) },
             tint = tint,
         )
 
@@ -304,7 +318,8 @@ fun CurrenciesScreenPreview() {
         {},
         {},
         {},
-        {}
+        {},
+        { "sadsad" },
     )
 }
 
@@ -345,7 +360,13 @@ fun CurrencyBottomNavigationBar(
     ) {
         items.forEach { item ->
             BottomNavigationItem(
-                icon = { Icon(painterResource(id = item.icon), contentDescription = item.title) },
+                icon = {
+                    Icon(
+                        painterResource(id = item.icon),
+                        contentDescription = item.title,
+                        modifier = Modifier.fillMaxHeight(0.4f)
+                    )
+                },
                 label = { Text(text = item.title) },
                 selectedContentColor = Color.White,
                 unselectedContentColor = Color.White.copy(0.4f),
@@ -353,7 +374,7 @@ fun CurrencyBottomNavigationBar(
                 selected = item.onlyFavourite == onlyFavourite,
                 onClick = {
                     onClick.invoke(item.onlyFavourite)
-                }
+                },
             )
         }
     }

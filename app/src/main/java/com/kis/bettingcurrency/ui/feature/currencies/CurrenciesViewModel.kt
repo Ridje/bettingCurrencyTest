@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kis.bettingcurrency.R
 import com.kis.bettingcurrency.core.ResourceProvider
+import com.kis.bettingcurrency.core.SortRateStrategy
+import com.kis.bettingcurrency.core.SortStrategyFactory
 import com.kis.bettingcurrency.data.repository.CurrencyRepository
 import com.kis.bettingcurrency.model.Currency
 import com.kis.bettingcurrency.model.CurrencyRate
@@ -11,7 +13,6 @@ import com.kis.bettingcurrency.ui.UIState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -22,21 +23,42 @@ import javax.inject.Inject
 class CurrenciesViewModel @Inject constructor(
     private val dataSource: CurrencyRepository,
     private val resourceProvider: ResourceProvider,
+    private val sortStrategyFactory: SortStrategyFactory,
 ) : ViewModel() {
 
     private var baseCurrency: Currency = Currency("EUR")
+    private var sortRateStrategy: SortRateStrategy = SortRateStrategy.ISO_DESC
+        set(value) {
+            if (field == value)
+                return
+
+            field = value
+            (_stateUI.value.ratesUIState as? UIState.Success)?.let { ratesState ->
+                _stateUI.value = _stateUI.value.copy(
+                    sortRateStrategy = sortRateStrategy,
+                    ratesUIState = UIState.Success(
+                        data = ratesState.data.copy(
+                            currencies = sortStrategyFactory.getStrategy(value)
+                                .sort(ratesState.data.currencies)
+                        )
+                    )
+                )
+            }
+        }
 
     private val _stateUI: MutableStateFlow<CurrenciesContract> = MutableStateFlow(
         CurrenciesContract(
             symbolsUIState = UIState.Loading,
             ratesUIState = UIState.Loading,
             onlyFavourite = false,
+            sortRateStrategy = sortRateStrategy,
         )
     )
     val stateUI: StateFlow<CurrenciesContract>
         get() {
             return _stateUI
         }
+
 
     private val ratesExceptionHandler = CoroutineExceptionHandler { _, throwable ->
         _stateUI.value = _stateUI.value.copy(
@@ -118,8 +140,7 @@ class CurrenciesViewModel @Inject constructor(
             _stateUI.value = stateUI.value.copy(
                 ratesUIState = UIState.Success(
                     CurrenciesContract.Rates(
-                        result,
-                        onlyFavourite = _stateUI.value.onlyFavourite
+                        sortStrategyFactory.getStrategy(sortRateStrategy).sort(result),
                     )
                 )
             )
@@ -183,23 +204,5 @@ class CurrenciesViewModel @Inject constructor(
         _stateUI.value = _stateUI.value.copy(
             onlyFavourite = onlyFavourite
         )
-
-        viewModelScope.launch {
-            // Рекомпоуз списка занимает слишком много времени,
-            // а нужно, чтобы интерфейс навигейшн бара изменялся мгновенно, поэтому
-            // пришлось сделать так грязно, с двумя реквизитами и дилеем.
-            delay(300L)
-
-            (_stateUI.value.ratesUIState as? UIState.Success)?.let { state ->
-                val data = state.data
-                _stateUI.value = _stateUI.value.copy(
-                    ratesUIState = UIState.Success(
-                        data = data.copy(
-                            onlyFavourite = onlyFavourite,
-                        )
-                    )
-                )
-            }
-        }
     }
 }

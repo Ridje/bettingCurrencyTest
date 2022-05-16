@@ -3,4 +3,5 @@
     <string name="currencies_list_not_available">Не удалось получить список валют, код ошибки: %1$d</string>
     <string name="rates_list_not_available">Не удалось получить список курсов валют, код ошибки: %1$d</string>
     <string name="unknown_error">Неизвестная ошибка, обратитесь к разработчику</string>
+    <string name="sort">Сортировка</string>
 </resources>
