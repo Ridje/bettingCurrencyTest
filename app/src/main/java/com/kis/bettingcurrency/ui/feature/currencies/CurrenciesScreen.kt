@@ -1,6 +1,7 @@
 package com.kis.bettingcurrency.ui.feature.currencies
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -17,6 +18,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.BottomNavigation
+import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Button
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.DropdownMenu
@@ -45,6 +48,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import com.kis.bettingcurrency.R
 import com.kis.bettingcurrency.model.Currency
 import com.kis.bettingcurrency.model.CurrencyRate
@@ -53,18 +58,20 @@ import java.math.BigDecimal
 
 @Composable
 fun CurrenciesScreenRoute(
-    viewModel: CurrenciesViewModel,
+    navController: NavController,
+    viewModel: CurrenciesViewModel = hiltViewModel(),
 ) {
-
     val screenState: CurrenciesContract by viewModel.stateUI.collectAsState()
 
     CurrenciesScreen(
         symbolsUIState = screenState.symbolsUIState,
         ratesUIState = screenState.ratesUIState,
+        onlyFavourite = screenState.onlyFavourite,
         onClickFavouriteIcon = viewModel::onClickFavouriteIcon,
         onSelectedCurrency = viewModel::onSelectedCurrency,
         onReloadCurrenciesClicked = viewModel::onReloadCurrenciesClicked,
         onReloadRatesClicked = viewModel::onReloadRatesClicked,
+        onBottomBarClick = viewModel::onBottomBarClick,
     )
 }
 
@@ -72,12 +79,22 @@ fun CurrenciesScreenRoute(
 fun CurrenciesScreen(
     symbolsUIState: UIState<CurrenciesContract.Symbols>,
     ratesUIState: UIState<CurrenciesContract.Rates>,
+    onlyFavourite: Boolean,
     onClickFavouriteIcon: (CurrencyRate) -> Unit,
     onSelectedCurrency: (Currency) -> Unit,
     onReloadCurrenciesClicked: () -> Unit,
     onReloadRatesClicked: () -> Unit,
+    onBottomBarClick: (Boolean) -> Unit,
 ) {
-    Scaffold {
+    Scaffold(
+        bottomBar = {
+            CurrencyBottomNavigationBar(
+                onlyFavourite = onlyFavourite,
+                onClick = onBottomBarClick,
+            )
+        }
+    ) {
+
         Column(
             modifier = Modifier
                 .padding(20.dp)
@@ -107,6 +124,7 @@ fun CurrenciesScreen(
             if (ratesUIState is UIState.Success) {
                 CurrenciesList(
                     currencies = ratesUIState.data.currencies,
+                    onlyFavourite = ratesUIState.data.onlyFavourite,
                     onClickFavouriteIcon = onClickFavouriteIcon,
                 )
             }
@@ -145,19 +163,24 @@ fun CurrenciesSnackBar(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CurrenciesList(
     currencies: List<CurrencyRate>,
+    onlyFavourite: Boolean,
     onClickFavouriteIcon: (CurrencyRate) -> Unit,
 ) {
     LazyColumn(
-        contentPadding = PaddingValues(horizontal = 5.dp, vertical = 8.dp)
+        contentPadding = PaddingValues(horizontal = 5.dp, vertical = 8.dp),
     ) {
-        items(currencies) { item ->
-            RateItemRow(
-                rateItem = item,
-                onClickFavouriteIcon = onClickFavouriteIcon,
-            )
+        items(currencies, key = { rate -> rate.currency.ISO }) { item ->
+            if (!onlyFavourite || item.isFavourite) {
+                RateItemRow(
+                    rateItem = item,
+                    onClickFavouriteIcon = onClickFavouriteIcon,
+                    modifier = Modifier.animateItemPlacement()
+                )
+            }
         }
     }
 }
@@ -166,10 +189,11 @@ fun CurrenciesList(
 fun RateItemRow(
     rateItem: CurrencyRate,
     onClickFavouriteIcon: (CurrencyRate) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Text(text = rateItem.currency.ISO)
         Text(text = rateItem.rate.toPlainString())
@@ -275,10 +299,12 @@ fun CurrenciesScreenPreview() {
             }
         ),
         ratesUIState = UIState.Error(),
+        false,
         {},
         {},
         {},
         {},
+        {}
     )
 }
 
@@ -303,5 +329,45 @@ private fun listOfSymbols(count: Int): List<Currency> {
         )
     }
     return list
+}
+
+@Composable
+fun CurrencyBottomNavigationBar(
+    onlyFavourite: Boolean,
+    onClick: (Boolean) -> Unit,
+) {
+    val items = listOf(
+        BottomBarItem.All,
+        BottomBarItem.Favourites,
+    )
+    BottomNavigation(
+        contentColor = Color.White,
+    ) {
+        items.forEach { item ->
+            BottomNavigationItem(
+                icon = { Icon(painterResource(id = item.icon), contentDescription = item.title) },
+                label = { Text(text = item.title) },
+                selectedContentColor = Color.White,
+                unselectedContentColor = Color.White.copy(0.4f),
+                alwaysShowLabel = true,
+                selected = item.onlyFavourite == onlyFavourite,
+                onClick = {
+                    onClick.invoke(item.onlyFavourite)
+                }
+            )
+        }
+    }
+}
+
+sealed class BottomBarItem(var onlyFavourite: Boolean, var icon: Int, var title: String) {
+    object All :
+        BottomBarItem(false, R.drawable.ic_coins_solid, "Home")
+
+    object Favourites :
+        BottomBarItem(
+            true,
+            R.drawable.ic_heart_solid,
+            "Favourites"
+        )
 }
 

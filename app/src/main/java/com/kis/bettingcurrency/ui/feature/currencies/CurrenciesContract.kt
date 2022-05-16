@@ -7,6 +7,7 @@ import com.kis.bettingcurrency.ui.UIState
 data class CurrenciesContract(
     val symbolsUIState: UIState<Symbols>,
     val ratesUIState: UIState<Rates>,
+    val onlyFavourite: Boolean,
 ) {
     data class Symbols(
         val currencies: List<Currency>,
@@ -15,5 +16,6 @@ data class CurrenciesContract(
 
     data class Rates(
         val currencies: List<CurrencyRate>,
+        val onlyFavourite: Boolean,
     )
 }

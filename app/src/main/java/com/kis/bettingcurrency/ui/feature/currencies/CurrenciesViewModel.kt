@@ -11,6 +11,7 @@ import com.kis.bettingcurrency.ui.UIState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -29,6 +30,7 @@ class CurrenciesViewModel @Inject constructor(
         CurrenciesContract(
             symbolsUIState = UIState.Loading,
             ratesUIState = UIState.Loading,
+            onlyFavourite = false,
         )
     )
     val stateUI: StateFlow<CurrenciesContract>
@@ -41,7 +43,10 @@ class CurrenciesViewModel @Inject constructor(
             ratesUIState = UIState.Error(
                 when (throwable) {
                     is HttpException -> {
-                        resourceProvider.getString(R.string.rates_list_not_available, throwable.code())
+                        resourceProvider.getString(
+                            R.string.rates_list_not_available,
+                            throwable.code()
+                        )
                     }
                     else -> {
                         resourceProvider.getString(R.string.unknown_error)
@@ -56,7 +61,10 @@ class CurrenciesViewModel @Inject constructor(
             symbolsUIState = UIState.Error(
                 when (throwable) {
                     is HttpException -> {
-                        resourceProvider.getString(R.string.currencies_list_not_available, throwable.code())
+                        resourceProvider.getString(
+                            R.string.currencies_list_not_available,
+                            throwable.code()
+                        )
                     }
                     else -> {
                         resourceProvider.getString(R.string.unknown_error)
@@ -84,7 +92,7 @@ class CurrenciesViewModel @Inject constructor(
             baseCurrency = currenciesResult.find { currency -> currency == baseCurrency }
                 ?: baseCurrency
 
-            _stateUI.value = stateUI.value.copy(
+            _stateUI.value = _stateUI.value.copy(
                 symbolsUIState = UIState.Success(
                     CurrenciesContract.Symbols(
                         currencies = currenciesResult,
@@ -110,7 +118,8 @@ class CurrenciesViewModel @Inject constructor(
             _stateUI.value = stateUI.value.copy(
                 ratesUIState = UIState.Success(
                     CurrenciesContract.Rates(
-                        result
+                        result,
+                        onlyFavourite = _stateUI.value.onlyFavourite
                     )
                 )
             )
@@ -168,5 +177,29 @@ class CurrenciesViewModel @Inject constructor(
 
     fun onReloadRatesClicked() {
         loadRates()
+    }
+
+    fun onBottomBarClick(onlyFavourite: Boolean) {
+        _stateUI.value = _stateUI.value.copy(
+            onlyFavourite = onlyFavourite
+        )
+
+        viewModelScope.launch {
+            // Рекомпоуз списка занимает слишком много времени,
+            // а нужно, чтобы интерфейс навигейшн бара изменялся мгновенно, поэтому
+            // пришлось сделать так грязно, с двумя реквизитами и дилеем.
+            delay(300L)
+
+            (_stateUI.value.ratesUIState as? UIState.Success)?.let { state ->
+                val data = state.data
+                _stateUI.value = _stateUI.value.copy(
+                    ratesUIState = UIState.Success(
+                        data = data.copy(
+                            onlyFavourite = onlyFavourite,
+                        )
+                    )
+                )
+            }
+        }
     }
 }

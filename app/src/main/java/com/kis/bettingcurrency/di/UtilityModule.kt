@@ -18,10 +18,10 @@ object UtilityModule {
 
     @Provides
     @Singleton
-    fun provideResourceProvider(
+    fun provideResourceProviderImpl(
         @ApplicationContext
         context: Context,
-    ): ResourceProvider {
+    ): ResourceProviderImpl {
         return ResourceProviderImpl(context)
     }
 
